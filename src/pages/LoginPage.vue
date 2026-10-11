@@ -15,11 +15,7 @@
               <q-icon name="lightbulb" color="amber" size="36px" class="glow-icon" />
               <span class="app-title">Send light</span>
             </div>
-<<<<<<< HEAD
             <div class="text-subtitle2 text-grey-7">
-=======
-            <div class="text-subtitle2 text-grey-5">
->>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
               {{ tab === 'login' ? 'Vitajte späť! Prihláste sa do svojho účtu.' : 'Vytvorte si nový účet a začnite četovať.' }}
             </div>
           </div>
@@ -28,15 +24,9 @@
           <q-tabs
             v-model="tab"
             dense
-<<<<<<< HEAD
             class="text-grey-7 login-tabs"
             active-color="deep-orange-8"
             indicator-color="deep-orange-8"
-=======
-            class="text-grey-4 login-tabs"
-            active-color="amber"
-            indicator-color="amber"
->>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
             align="justify"
             narrow-indicator
           >
@@ -44,15 +34,9 @@
             <q-tab name="register" label="Registrácia" icon="person_add" />
           </q-tabs>
 
-<<<<<<< HEAD
           <q-separator />
 
           <q-tab-panels v-model="tab" animated class="bg-transparent text-grey-9">
-=======
-          <q-separator dark />
-
-          <q-tab-panels v-model="tab" animated class="bg-transparent text-white">
->>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
             <!-- TAB: PRIHLÁSENIE -->
             <q-tab-panel name="login" class="q-pa-lg">
               <q-form @submit.prevent="handleLogin" class="q-gutter-y-md">
@@ -60,24 +44,14 @@
                   v-model="loginForm.email"
                   type="email"
                   label="Emailová adresa"
-<<<<<<< HEAD
                   label-color="grey-7"
                   color="deep-orange-8"
-=======
-                  label-color="grey-4"
-                  color="amber"
-                  dark
->>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
                   outlined
                   dense
                   :rules="[val => !!val || 'Email je povinný', val => isValidEmail(val) || 'Zadajte platný email']"
                 >
                   <template #prepend>
-<<<<<<< HEAD
                     <q-icon name="mail" color="deep-orange-8" />
-=======
-                    <q-icon name="mail" color="amber" />
->>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
                   </template>
                 </q-input>
 
@@ -85,34 +59,20 @@
                   v-model="loginForm.password"
                   :type="showPassword ? 'text' : 'password'"
                   label="Heslo"
-<<<<<<< HEAD
                   label-color="grey-7"
                   color="deep-orange-8"
-=======
-                  label-color="grey-4"
-                  color="amber"
-                  dark
->>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
                   outlined
                   dense
                   :rules="[val => !!val || 'Heslo je povinné']"
                 >
                   <template #prepend>
-<<<<<<< HEAD
                     <q-icon name="lock" color="deep-orange-8" />
-=======
-                    <q-icon name="lock" color="amber" />
->>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
                   </template>
                   <template #append>
                     <q-icon
                       :name="showPassword ? 'visibility_off' : 'visibility'"
                       class="cursor-pointer"
-<<<<<<< HEAD
                       color="grey-6"
-=======
-                      color="grey-4"
->>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
                       @click="showPassword = !showPassword"
                     />
                   </template>
@@ -121,13 +81,8 @@
                 <div class="q-pt-sm">
                   <q-btn
                     type="submit"
-<<<<<<< HEAD
                     color="deep-orange-7"
                     text-color="white"
-=======
-                    color="amber"
-                    text-color="dark"
->>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
                     class="full-width submit-btn text-weight-bold"
                     size="md"
                     label="Prihlásiť sa"
@@ -148,24 +103,14 @@
                   v-model="registerForm.name"
                   type="text"
                   label="Celé meno / Prezývka"
-<<<<<<< HEAD
                   label-color="grey-7"
                   color="deep-orange-8"
-=======
-                  label-color="grey-4"
-                  color="amber"
-                  dark
->>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
                   outlined
                   dense
                   :rules="[val => !!val || 'Meno je povinné', val => val.length >= 2 || 'Meno musí mať aspoň 2 znaky']"
                 >
                   <template #prepend>
-<<<<<<< HEAD
                     <q-icon name="badge" color="deep-orange-8" />
-=======
-                    <q-icon name="badge" color="amber" />
->>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
                   </template>
                 </q-input>
 
@@ -173,24 +118,14 @@
                   v-model="registerForm.email"
                   type="email"
                   label="Emailová adresa"
-<<<<<<< HEAD
                   label-color="grey-7"
                   color="deep-orange-8"
-=======
-                  label-color="grey-4"
-                  color="amber"
-                  dark
->>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
                   outlined
                   dense
                   :rules="[val => !!val || 'Email je povinný', val => isValidEmail(val) || 'Zadajte platný email']"
                 >
                   <template #prepend>
-<<<<<<< HEAD
                     <q-icon name="mail" color="deep-orange-8" />
-=======
-                    <q-icon name="mail" color="amber" />
->>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
                   </template>
                 </q-input>
 
@@ -198,34 +133,20 @@
                   v-model="registerForm.password"
                   :type="showPassword ? 'text' : 'password'"
                   label="Heslo"
-<<<<<<< HEAD
                   label-color="grey-7"
                   color="deep-orange-8"
-=======
-                  label-color="grey-4"
-                  color="amber"
-                  dark
->>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
                   outlined
                   dense
                   :rules="[val => !!val || 'Heslo je povinné', val => val.length >= 4 || 'Heslo musí mať aspoň 4 znaky']"
                 >
                   <template #prepend>
-<<<<<<< HEAD
                     <q-icon name="lock" color="deep-orange-8" />
-=======
-                    <q-icon name="lock" color="amber" />
->>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
                   </template>
                   <template #append>
                     <q-icon
                       :name="showPassword ? 'visibility_off' : 'visibility'"
                       class="cursor-pointer"
-<<<<<<< HEAD
                       color="grey-6"
-=======
-                      color="grey-4"
->>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
                       @click="showPassword = !showPassword"
                     />
                   </template>
@@ -234,13 +155,8 @@
                 <div class="q-pt-sm">
                   <q-btn
                     type="submit"
-<<<<<<< HEAD
                     color="deep-orange-7"
                     text-color="white"
-=======
-                    color="amber"
-                    text-color="dark"
->>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
                     class="full-width submit-btn text-weight-bold"
                     size="md"
                     label="Vytvoriť účet"
@@ -335,11 +251,7 @@ async function handleRegister() {
 <style lang="scss" scoped>
 .login-page {
   min-height: 100vh;
-<<<<<<< HEAD
   background: linear-gradient(135deg, #fffaf6 0%, #fff1e6 100%);
-=======
-  background: #1e1e1e;
->>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
   position: relative;
   overflow: hidden;
   font-family: Inter, Roboto, sans-serif;
@@ -359,11 +271,7 @@ async function handleRegister() {
   position: absolute;
   top: 0;
   width: 320px;
-<<<<<<< HEAD
   opacity: 0.22;
-=======
-  opacity: 0.85;
->>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
 }
 
 .b1 {
@@ -379,17 +287,10 @@ async function handleRegister() {
   width: 100%;
   max-width: 440px;
   margin: 20px;
-<<<<<<< HEAD
   background: rgba(255, 255, 255, 0.96);
   border: 1px solid #f2e4db;
   border-radius: 16px;
   box-shadow: 0 18px 50px rgba(122, 69, 38, 0.12);
-=======
-  background: rgba(28, 28, 28, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  backdrop-filter: blur(10px);
->>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
   z-index: 2;
 }
 
@@ -397,28 +298,16 @@ async function handleRegister() {
   font-family: Georgia, 'Times New Roman', serif;
   font-size: 2rem;
   font-weight: bold;
-<<<<<<< HEAD
   color: #34251e;
-=======
-  color: #fff;
->>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
   letter-spacing: 0.5px;
 }
 
 .glow-icon {
-<<<<<<< HEAD
   filter: drop-shadow(0 0 8px rgba(242, 118, 69, 0.28));
 }
 
 .login-tabs {
   background: #fff7f1;
-=======
-  filter: drop-shadow(0 0 8px rgba(245, 179, 53, 0.6));
-}
-
-.login-tabs {
-  background: rgba(0, 0, 0, 0.2);
->>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
 }
 
 .submit-btn {
