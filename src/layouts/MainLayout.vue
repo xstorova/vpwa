@@ -9,9 +9,13 @@
     >
       <!-- Profil používateľa (Účet s možnosťou odhlásenia) -->
       <div class="user-profile row items-center no-wrap cursor-pointer" title="Kliknite pre správu účtu">
+<<<<<<< HEAD
         <q-avatar size="52px" color="orange-1" text-color="deep-orange-8" class="profile-avatar">
           {{ initial(state.me.name) }}
         </q-avatar>
+=======
+        <q-avatar size="60px" color="grey-4" class="profile-avatar" />
+>>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
         <div class="user-display-name q-ml-md">
           <template v-if="state.me.name && state.me.name.includes(' ')">
             <div>{{ state.me.name.split(' ')[0] }}</div>
@@ -23,6 +27,7 @@
         </div>
 
         <!-- Menu používateľského účtu po kliknutí na profil -->
+<<<<<<< HEAD
         <q-menu class="user-account-menu" anchor="bottom start" self="top start">
           <div class="q-pa-md" style="min-width: 220px; background: #ffffff; border: 1px solid #f2e4db; border-radius: 12px;">
             <div class="row items-center q-mb-sm">
@@ -32,16 +37,34 @@
               <div>
                 <div class="text-weight-bold text-grey-9">{{ state.me.name }}</div>
                 <div class="text-caption text-grey-7">@{{ state.me.nick || 'pouzivatel' }}</div>
+=======
+        <q-menu dark class="user-account-menu" anchor="bottom start" self="top start">
+          <div class="q-pa-md" style="min-width: 220px; background: #1c1c1c; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;">
+            <div class="row items-center q-mb-sm">
+              <q-avatar size="36px" color="grey-4" class="q-mr-sm" />
+              <div>
+                <div class="text-weight-bold text-white">{{ state.me.name }}</div>
+                <div class="text-caption text-grey-5">@{{ state.me.nick || 'pouzivatel' }}</div>
+>>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
               </div>
             </div>
             <div class="row items-center q-gutter-x-xs q-mb-md">
               <q-badge color="positive" rounded />
+<<<<<<< HEAD
               <span class="text-caption text-grey-7">Online</span>
             </div>
             <q-separator class="q-mb-md" />
             <q-btn
               color="deep-orange-7"
               text-color="white"
+=======
+              <span class="text-caption text-grey-4">Online</span>
+            </div>
+            <q-separator dark class="q-mb-md" />
+            <q-btn
+              color="amber"
+              text-color="dark"
+>>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
               icon="logout"
               label="Odhlásiť sa"
               class="full-width text-weight-bold"
@@ -55,6 +78,7 @@
 
       <!-- Akčné tlačidlá v bočnom paneli -->
       <div class="q-px-md q-pb-sm row q-gutter-x-sm">
+<<<<<<< HEAD
         <q-btn
           dense
           unelevated
@@ -79,16 +103,31 @@
           aria-label="Vytvoriť skupinu"
           @click="groupDialog = true"
         />
+=======
+        <q-btn dense unelevated class="sidebar-action-btn" icon="search" size="sm" />
+        <q-btn dense unelevated class="sidebar-action-btn" icon="person_add" size="sm" />
+      </div>
+
+      <!-- Sekcia: Aktívne kanály -->
+      <div class="sidebar-section-title row items-center no-wrap">
+        <span>Active</span>
+        <q-icon name="lightbulb" color="amber-7" size="20px" class="q-ml-xs glow-bulb" />
+>>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
       </div>
 
       <q-list class="sidebar-channel-list">
         <q-item
+<<<<<<< HEAD
           v-for="c in state.channels"
+=======
+          v-for="c in active"
+>>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
           :key="c.id"
           clickable
           v-ripple
           class="channel-row-item"
           :class="{ 'is-selected': c.id === state.activeId }"
+<<<<<<< HEAD
           @click="selectChat(c.id)"
         >
           <q-item-section side class="status-indicator-cell">
@@ -97,10 +136,17 @@
               :color="c.active ? 'deep-orange-7' : 'grey-5'"
               size="21px"
             />
+=======
+          @click="state.activeId = c.id"
+        >
+          <q-item-section side class="status-indicator-cell">
+            <q-icon name="lightbulb" color="amber-7" size="22px" />
+>>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
             <span v-if="c.unread" class="unread-badge">{{ c.unread }}</span>
           </q-item-section>
 
           <q-item-section avatar class="channel-avatar-cell">
+<<<<<<< HEAD
             <q-avatar
               size="36px"
               :src="c.avatar || undefined"
@@ -109,13 +155,56 @@
             >
               <span v-if="!c.avatar">{{ initial(c.name) }}</span>
             </q-avatar>
+=======
+            <div v-if="c.group" class="group-avatar-stack">
+              <span class="back-avatar" />
+              <span class="front-avatar" />
+            </div>
+            <q-avatar v-else size="32px" color="grey-4" />
           </q-item-section>
 
           <q-item-section class="channel-name-text">
             {{ c.name }}
+          </q-item-section>
+        </q-item>
+      </q-list>
+
+      <!-- Sekcia: Send light -->
+      <div class="sidebar-section-title q-mt-md">
+        <span>Send light</span>
+      </div>
+
+      <q-list class="sidebar-channel-list">
+        <q-item
+          v-for="c in dark"
+          :key="c.id"
+          clickable
+          v-ripple
+          class="channel-row-item"
+          :class="{ 'is-selected': c.id === state.activeId }"
+          @click="state.activeId = c.id"
+        >
+          <q-item-section side class="status-indicator-cell">
+            <q-icon name="lightbulb" class="dim-bulb-icon" size="22px" />
+          </q-item-section>
+
+          <q-item-section avatar class="channel-avatar-cell">
+            <div v-if="c.group" class="group-avatar-stack">
+              <span class="back-avatar" />
+              <span class="front-avatar" />
+            </div>
+            <q-avatar v-else size="32px" color="grey-4" />
+>>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
+          </q-item-section>
+
+          <q-item-section class="channel-name-text">
+            {{ c.name }}
+<<<<<<< HEAD
             <q-item-label v-if="c.group && c.members?.length" caption class="channel-members-caption">
               {{ membersLabel(c) }}
             </q-item-label>
+=======
+>>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
           </q-item-section>
         </q-item>
       </q-list>
@@ -125,6 +214,7 @@
     <q-header class="header-container row items-center no-wrap q-px-lg">
       <q-btn flat round icon="menu" class="lt-md q-mr-sm" @click="drawer = !drawer" />
 
+<<<<<<< HEAD
       <q-avatar
         size="44px"
         :src="current?.avatar || undefined"
@@ -139,14 +229,32 @@
         <div class="header-channel-title">{{ current?.name || 'Meno Priezvisko' }}</div>
         <div v-if="current?.group" class="header-channel-caption">
           {{ membersLabel(current) }}
+=======
+      <q-avatar size="44px" color="grey-4" class="header-user-avatar" />
+
+      <div class="header-user-info q-ml-md">
+        <div class="header-channel-title">
+          <template v-if="current?.name && current.name.includes(' ')">
+            <div>{{ current.name.split(' ')[0] }}</div>
+            <div>{{ current.name.split(' ').slice(1).join(' ') }}</div>
+          </template>
+          <template v-else>
+            {{ current?.name || 'Meno Priezvisko' }}
+          </template>
+>>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
         </div>
       </div>
 
       <q-space />
 
       <!-- Ikony v chate podľa obrázka (nastavenia, pripnutie) -->
+<<<<<<< HEAD
       <q-btn flat round icon="settings" size="md" color="grey-7" class="q-mr-xs header-icon-btn" />
       <q-btn flat round icon="push_pin" size="md" color="grey-7" class="header-icon-btn" />
+=======
+      <q-btn flat round icon="settings" size="md" color="grey-5" class="q-mr-xs header-icon-btn" />
+      <q-btn flat round icon="push_pin" size="md" color="grey-5" class="header-icon-btn" />
+>>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
     </q-header>
 
     <!-- Obsah stránky (Chat) -->
@@ -175,6 +283,7 @@
       <q-btn round unelevated class="footer-action-btn q-ml-sm" icon="add" size="md" />
       <q-btn round unelevated class="footer-action-btn q-ml-sm" icon="sentiment_very_satisfied" size="md" />
     </q-footer>
+<<<<<<< HEAD
 
     <q-dialog v-model="groupDialog">
       <q-card class="group-dialog">
@@ -214,21 +323,32 @@
         </q-form>
       </q-card>
     </q-dialog>
+=======
+>>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
   </q-layout>
 </template>
 
 <script setup>
 import { ref, computed, watchEffect } from 'vue'
 import { useRouter } from 'vue-router'
+<<<<<<< HEAD
 import { state, send, selectChannel, createGroup } from '../data/mock'
+=======
+import { state, send } from '../data/mock'
+>>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
 import { authState } from '../services/auth'
 
 const router = useRouter()
 const drawer = ref(true)
 const text = ref('')
+<<<<<<< HEAD
 const groupDialog = ref(false)
 const groupName = ref('')
 const groupMembers = ref('')
+=======
+const active = computed(() => state.channels.filter(c => c.active))
+const dark = computed(() => state.channels.filter(c => !c.active))
+>>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
 const current = computed(() => state.channels.find(c => c.id === state.activeId) || state.channels[0])
 
 // Synchronizácia prihláseného používateľa
@@ -244,6 +364,7 @@ function handleLogout() {
   router.push('/login')
 }
 
+<<<<<<< HEAD
 function initial(name) {
   const trimmedName = String(name || '').trim()
   return trimmedName ? trimmedName.charAt(0).toLocaleUpperCase('sk') : '?'
@@ -274,6 +395,8 @@ function submitGroup() {
   groupDialog.value = false
 }
 
+=======
+>>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
 function submit() {
   const t = text.value.trim()
   if (!t) return
@@ -284,8 +407,13 @@ function submit() {
 
 <style lang="scss">
 .chat-app-layout {
+<<<<<<< HEAD
   background: #fffaf6;
   color: #332720;
+=======
+  background: #242424;
+  color: #ddd;
+>>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
   font-family: Inter, Roboto, sans-serif;
   height: 100vh;
   overflow: hidden;
@@ -293,6 +421,7 @@ function submit() {
 
 /* SIDEBAR */
 .sidebar-container {
+<<<<<<< HEAD
   background: #ffffff !important;
   color: #332720;
   border-right: 1px solid #f1e6df;
@@ -305,10 +434,25 @@ function submit() {
 
   &:hover {
     background: #fff7f1;
+=======
+  background: #161616 !important;
+  color: #eee;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.user-profile {
+  padding: 24px 18px 14px;
+  border-radius: 8px;
+  transition: background 0.2s;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.04);
+>>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
   }
 }
 
 .profile-avatar {
+<<<<<<< HEAD
   font-size: 1.25rem;
   font-weight: 700;
 }
@@ -330,18 +474,56 @@ function submit() {
   &:hover {
     color: #a73714 !important;
     background: #ffe3d3 !important;
+=======
+  background: #dedede !important;
+}
+
+.user-display-name {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.7rem;
+  line-height: 1.1;
+  color: #ffffff;
+}
+
+.sidebar-action-btn {
+  width: 44px;
+  height: 30px;
+  border-radius: 8px;
+  background: #2a2a2a !important;
+  color: #888 !important;
+
+  &:hover {
+    color: #fff !important;
+    background: #333 !important;
+>>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
   }
 }
 
 .sidebar-section-title {
+<<<<<<< HEAD
   padding: 10px 14px 6px 18px;
   font-size: 0.95rem;
   font-weight: 700;
   color: #6f574a;
+=======
+  padding: 12px 18px 6px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.35rem;
+  color: #ffffff;
+}
+
+.glow-bulb {
+  filter: drop-shadow(0 0 4px rgba(245, 179, 53, 0.7));
+}
+
+.dim-bulb-icon {
+  color: #4a4239 !important;
+>>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
 }
 
 .sidebar-channel-list {
   padding: 0 4px;
+<<<<<<< HEAD
   overflow-y: auto;
   max-height: calc(100vh - 180px);
 }
@@ -360,6 +542,22 @@ function submit() {
 
   &:hover {
     background: #fff7f1;
+=======
+}
+
+.channel-row-item {
+  min-height: 48px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  margin: 2px 4px;
+
+  &.is-selected {
+    background: #252525;
+  }
+
+  &:hover {
+    background: #1f1f1f;
+>>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
   }
 }
 
@@ -373,6 +571,7 @@ function submit() {
   position: absolute;
   right: -2px;
   bottom: -4px;
+<<<<<<< HEAD
   background: #f27645;
   color: #fff;
   border-radius: 50%;
@@ -381,10 +580,21 @@ function submit() {
   font-size: 9px;
   font-weight: bold;
   line-height: 16px;
+=======
+  background: #f5b335;
+  color: #111;
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  font-size: 9px;
+  font-weight: bold;
+  line-height: 14px;
+>>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
   text-align: center;
 }
 
 .channel-avatar-cell {
+<<<<<<< HEAD
   min-width: 46px;
   padding-right: 10px;
 }
@@ -398,10 +608,47 @@ function submit() {
 .channel-members-caption {
   color: #9a8376;
   font-size: 0.72rem;
+=======
+  min-width: 40px;
+  padding-right: 8px;
+}
+
+.channel-name-text {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.05rem;
+  color: #e2e2e2;
+}
+
+.group-avatar-stack {
+  position: relative;
+  width: 36px;
+  height: 32px;
+
+  span {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+  }
+
+  .back-avatar {
+    left: 0;
+    top: 2px;
+    background: #c5c5c5;
+  }
+
+  .front-avatar {
+    left: 10px;
+    top: 6px;
+    background: #dedede;
+    border: 1px solid #161616;
+  }
+>>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
 }
 
 /* HEADER */
 .header-container {
+<<<<<<< HEAD
   background: #ffffff !important;
   color: #332720;
   height: 72px;
@@ -430,18 +677,50 @@ function submit() {
   &:hover {
     opacity: 1;
     color: #c64b22 !important;
+=======
+  background: #242424 !important;
+  color: #ddd;
+  height: 72px;
+  box-shadow: none !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.header-user-avatar {
+  background: #dedede !important;
+}
+
+.header-channel-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.15rem;
+  line-height: 1.15;
+  color: #fff;
+}
+
+.header-icon-btn {
+  opacity: 0.8;
+  &:hover {
+    opacity: 1;
+    color: #fff !important;
+>>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
   }
 }
 
 /* FOOTER */
 .chat-footer-bar {
+<<<<<<< HEAD
   background: #ffffff !important;
   box-shadow: 0 -2px 12px rgba(79, 47, 26, 0.04) !important;
   border-top: 1px solid #f1e6df;
+=======
+  background: #242424 !important;
+  box-shadow: none !important;
+  border-top: none;
+>>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
 }
 
 .message-input-field {
   .q-field__control {
+<<<<<<< HEAD
     background: #fffaf6 !important;
     border: 1px solid #f0dfd4;
     border-radius: 24px !important;
@@ -466,10 +745,32 @@ function submit() {
 .footer-action-btn {
   background: #fff0e7 !important;
   color: #c64b22 !important;
+=======
+    background: #dedede !important;
+    border-radius: 28px !important;
+    height: 46px;
+    padding: 0 16px;
+  }
+
+  .q-field__native {
+    color: #111 !important;
+    font-size: 0.95rem;
+
+    &::placeholder {
+      color: #333 !important;
+    }
+  }
+}
+
+.footer-action-btn {
+  background: #dedede !important;
+  color: #111 !important;
+>>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
   width: 44px;
   height: 44px;
 
   &:hover {
+<<<<<<< HEAD
     background: #ffe3d3 !important;
   }
 }
@@ -490,6 +791,9 @@ function submit() {
   .footer-action-btn {
     width: 38px;
     height: 38px;
+=======
+    background: #ececec !important;
+>>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
   }
 }
 </style>

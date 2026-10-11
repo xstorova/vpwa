@@ -5,8 +5,11 @@
     "dist/": true,
     ".quasar/": true,
     "/quasar.config.js.temporary.*": true
+<<<<<<< HEAD
   },
   "chat.tools.terminal.autoApprove": {
     "git -C 'C:\\Users\\micha\\Downloads\\vpwa-main'": true
+=======
+>>>>>>> 8bb8e6b0191572e134656b38232692d89da8a73d
   }
 }
