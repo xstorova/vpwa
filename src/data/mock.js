@@ -25,7 +25,8 @@ function makeChannel (channel) {
     memberNicks: channel.memberNicks || [currentUser.nick],
     invitedNicks: channel.invitedNicks || [],
     bannedNicks: channel.bannedNicks || [],
-    kickVotes: channel.kickVotes || {}
+    kickVotes: channel.kickVotes || {},
+    lastActivityAt: channel.lastActivityAt || Date.now()
   }
 }
 
@@ -36,13 +37,11 @@ export const state = reactive({
   activeId: 1,
   historyPagesLoadedByChannel: {},
   pendingMessagesByChannel: {},
-  typingByChannel: {
-    2: {
-      nina: 'Ešte dnes doplním posledné úpravy do návrhu.'
-    }
-  },
+  typingByChannel: {},
+  activeDraftPreview: null,
+  activeUserProfile: null,
   channels: [
-    { id: 1, name: 'Nina Kováčová', nick: 'nina', group: false, active: true, unread: 0, avatar: null },
+    { id: 1, name: 'Nina Kováčová', nick: 'nina', group: false, active: true, unread: 0, avatar: null, lastActivityAt: Date.now() - 1000 * 60 * 60 * 2 },
     makeChannel({
       id: 2,
       name: 'Projekt OOP',
@@ -51,10 +50,22 @@ export const state = reactive({
       unread: 2,
       avatar: null,
       members: [currentUser.name, 'Nina Kováčová', 'Tomáš Bielik'],
-      memberNicks: [currentUser.nick, 'nina', 'tomas']
+      memberNicks: [currentUser.nick, 'nina', 'tomas'],
+      lastActivityAt: Date.now() - 1000 * 60 * 60 * 24
     }),
-    { id: 3, name: 'Peter Novotný', nick: 'peter', group: false, active: false, unread: 0, avatar: null },
-    { id: 4, name: 'Laura Poláková', nick: 'laura', group: false, active: false, unread: 0, avatar: null }
+    { id: 3, name: 'Peter Novotný', nick: 'peter', group: false, active: false, unread: 0, avatar: null, lastActivityAt: Date.now() - 1000 * 60 * 60 * 24 * 5 },
+    { id: 4, name: 'Laura Poláková', nick: 'laura', group: false, active: false, unread: 0, avatar: null, lastActivityAt: Date.now() - 1000 * 60 * 60 * 24 * 12 },
+    makeChannel({
+      id: 5,
+      name: 'Starý projekt',
+      group: true,
+      active: false,
+      unread: 0,
+      avatar: null,
+      members: [currentUser.name, 'Peter Novotný'],
+      memberNicks: [currentUser.nick, 'peter'],
+      lastActivityAt: Date.now() - 1000 * 60 * 60 * 24 * 34 // 34 dní neaktívny (> 30 dní)
+    })
   ],
   messages: [
     { id: 1, mine: false, text: 'Ahoj, ako pokračuje projekt?', date: '11/10/2026' },
@@ -68,9 +79,9 @@ export const state = reactive({
       { id: 3, mine: false, text: 'Super, potom mi ho pošli na kontrolu.', date: '11/10/2026' }
     ],
     2: [
-      { id: 4, mine: false, text: 'Nezabudnite, dnes si rozdelíme úlohy.', date: '11/10/2026' },
+      { id: 4, mine: false, senderNick: 'nina', senderName: 'Nina Kováčová', text: 'Nezabudnite, dnes si rozdelíme úlohy.', date: '11/10/2026' },
       { id: 5, mine: true, text: 'Jasné, pripravím zoznam požiadaviek.', date: '11/10/2026' },
-      { id: 6, mine: false, text: 'Ja zatiaľ pozriem databázový model.', date: '11/10/2026' }
+      { id: 6, mine: false, senderNick: 'tomas', senderName: 'Tomáš Bielik', text: `@${currentUser.nick} pošli mi prosím potom návrh dátového modelu.`, recipientNick: currentUser.nick, date: '11/10/2026' }
     ],
     3: [
       { id: 7, mine: false, text: 'Máš, prosím, poznámky z cvičenia?', date: '11/10/2026' },
@@ -182,13 +193,14 @@ export function receiveMessage (channelId, text, recipientNick) {
   const sender = channel.group
     ? state.users.find(user => user.nick === 'nina' && channel.memberNicks.includes(user.nick))
     : state.users.find(user => user.nick === channel.nick)
+  const resolvedRecipient = (recipientNick || extractRecipientNick(text))?.toLowerCase() || null
   const message = {
     id: `incoming-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     mine: false,
     senderNick: sender?.nick || 'ukazka',
     senderName: sender?.name || 'Ukážkový používateľ',
     text,
-    recipientNick,
+    recipientNick: resolvedRecipient,
     date: new Date().toLocaleDateString('sk-SK')
   }
 
@@ -199,6 +211,7 @@ export function receiveMessage (channelId, text, recipientNick) {
     return { delivered: false, queued: true, channel, message }
   }
 
+  channel.lastActivityAt = Date.now()
   state.messagesByChannel[channelId] = [...(state.messagesByChannel[channelId] || []), message]
   if (state.activeId === channelId) {
     state.messages.push(message)
@@ -415,15 +428,65 @@ export function addFriend (nickname) {
   return { channel, added: true }
 }
 
+export function checkInactiveChannels () {
+  const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000
+  const now = Date.now()
+  const removed = []
+
+  for (let i = state.channels.length - 1; i >= 0; i--) {
+    const channel = state.channels[i]
+    if (channel.group && channel.lastActivityAt && (now - channel.lastActivityAt > thirtyDaysMs)) {
+      removed.push(channel)
+      removeChannel(channel)
+    }
+  }
+
+  return removed
+}
+
+export function extractRecipientNick (text) {
+  if (!text) return null
+  const match = text.match(/@([a-zA-Z0-9_.-]+)/)
+  return match ? match[1].toLowerCase() : null
+}
+
 export function send (text) {
-  const recipient = text.match(/^@([a-zA-Z0-9_.-]+)(?:\s|$)/)
+  const recipientNick = extractRecipientNick(text)
   const message = {
     id: Date.now(),
     mine: true,
     text,
-    recipientNick: recipient?.[1]?.toLocaleLowerCase(),
+    recipientNick,
     date: new Date().toLocaleDateString('sk-SK')
   }
   state.messages.push(message)
+  if (state.messagesByChannel[state.activeId]) {
+    state.messagesByChannel[state.activeId] = state.messages.slice()
+  }
+  const channel = state.channels.find(c => c.id === state.activeId)
+  if (channel) {
+    channel.lastActivityAt = Date.now()
+  }
   return message
+}
+
+export function openUserProfile (userOrNick) {
+  if (!userOrNick) return
+  const rawNick = (typeof userOrNick === 'string' ? userOrNick : (userOrNick.nick || userOrNick.senderNick)) || ''
+  const cleanNick = rawNick.replace(/^@/, '').toLowerCase().trim()
+  if (!cleanNick) return
+
+  let user = state.users.find(u => u.nick?.toLowerCase() === cleanNick)
+  if (!user) {
+    if (state.me.nick?.toLowerCase() === cleanNick) {
+      user = state.me
+    } else {
+      user = {
+        name: typeof userOrNick === 'object' && userOrNick.name ? userOrNick.name : `@${cleanNick}`,
+        nick: cleanNick,
+        status: 'online'
+      }
+    }
+  }
+  state.activeUserProfile = { ...user }
 }

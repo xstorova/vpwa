@@ -43,18 +43,23 @@ export const authState = {
     return userData
   },
 
-  async register(name, email, password) {
+  async register(name, email, password, nick) {
     await new Promise(resolve => setTimeout(resolve, 500))
     
     if (!name || !email || !password) {
       throw new Error('Prosím vyplňte všetky povinné polia.')
     }
+
+    const cleanNick = (nick || email.split('@')[0]).trim().replace(/^@/, '').toLowerCase()
+    if (!cleanNick) {
+      throw new Error('Zadajte platnú prezývku.')
+    }
     
     const userData = {
       id: Date.now(),
-      name,
-      email,
-      nick: email.split('@')[0].toLowerCase(),
+      name: name.trim(),
+      email: email.trim(),
+      nick: cleanNick,
       status: 'online'
     }
     const mockToken = 'mock_jwt_token_' + Math.random().toString(36).substring(2)

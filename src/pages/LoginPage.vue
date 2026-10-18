@@ -102,15 +102,35 @@
                 <q-input
                   v-model="registerForm.name"
                   type="text"
-                  label="Celé meno / Prezývka"
+                  label="Meno a priezvisko"
                   label-color="grey-7"
                   color="deep-orange-8"
                   outlined
                   dense
-                  :rules="[val => !!val || 'Meno je povinné', val => val.length >= 2 || 'Meno musí mať aspoň 2 znaky']"
+                  :rules="[val => !!val || 'Meno a priezvisko je povinné', val => val.trim().length >= 2 || 'Meno musí mať aspoň 2 znaky']"
                 >
                   <template #prepend>
                     <q-icon name="badge" color="deep-orange-8" />
+                  </template>
+                </q-input>
+
+                <q-input
+                  v-model="registerForm.nick"
+                  type="text"
+                  label="Prezývka (@nickname)"
+                  label-color="grey-7"
+                  color="deep-orange-8"
+                  outlined
+                  dense
+                  hint="Unikátny identifikátor, napr. michal alebo alex9"
+                  :rules="[
+                    val => !!val || 'Prezývka je povinná',
+                    val => /^[a-zA-Z0-9_.-]+$/.test(val.replace(/^@/, '')) || 'Iba písmená, čísla, podčiarkovník a bodka',
+                    val => val.replace(/^@/, '').length >= 3 || 'Prezývka musí mať aspoň 3 znaky'
+                  ]"
+                >
+                  <template #prepend>
+                    <q-icon name="alternate_email" color="deep-orange-8" />
                   </template>
                 </q-input>
 
@@ -198,6 +218,7 @@ const loginForm = reactive({
 
 const registerForm = reactive({
   name: '',
+  nick: '',
   email: '',
   password: ''
 })
@@ -230,9 +251,12 @@ async function handleLogin() {
 async function handleRegister() {
   loading.value = true
   try {
-    const user = await authState.register(registerForm.name, registerForm.email, registerForm.password)
+    const user = await authState.register(registerForm.name, registerForm.email, registerForm.password, registerForm.nick)
     state.me.name = user.name
     state.me.nick = user.nick
+    if (!state.users.some(u => u.nick === user.nick)) {
+      state.users.push({ name: user.name, nick: user.nick, status: 'online' })
+    }
 
     const redirectPath = route.query.redirect || '/'
     router.push(redirectPath)
@@ -251,10 +275,12 @@ async function handleRegister() {
 <style lang="scss" scoped>
 .login-page {
   min-height: 100vh;
+  min-height: 100dvh;
   background: linear-gradient(135deg, #fffaf6 0%, #fff1e6 100%);
   position: relative;
   overflow: hidden;
   font-family: Inter, Roboto, sans-serif;
+  padding: 12px;
 }
 
 .background-decorations {
@@ -272,6 +298,11 @@ async function handleRegister() {
   top: 0;
   width: 320px;
   opacity: 0.22;
+
+  @media (max-width: 599px) {
+    width: 180px;
+    opacity: 0.12;
+  }
 }
 
 .b1 {
@@ -286,12 +317,21 @@ async function handleRegister() {
 .login-card {
   width: 100%;
   max-width: 440px;
-  margin: 20px;
+  margin: 12px auto;
   background: rgba(255, 255, 255, 0.96);
   border: 1px solid #f2e4db;
   border-radius: 16px;
   box-shadow: 0 18px 50px rgba(122, 69, 38, 0.12);
   z-index: 2;
+
+  @media (max-width: 480px) {
+    margin: 8px auto;
+    border-radius: 14px;
+
+    :deep(.q-tab-panel) {
+      padding: 16px 12px !important;
+    }
+  }
 }
 
 .app-title {
@@ -300,6 +340,10 @@ async function handleRegister() {
   font-weight: bold;
   color: #34251e;
   letter-spacing: 0.5px;
+
+  @media (max-width: 480px) {
+    font-size: 1.6rem;
+  }
 }
 
 .glow-icon {
