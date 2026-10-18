@@ -248,6 +248,54 @@ export function setUserStatus (status) {
   return deliveredMessages
 }
 
+export function updateCurrentUserProfile (oldNick, oldName, user) {
+  const cleanNick = user.nick.toLowerCase()
+  const existingUser = state.users.find(item =>
+    item !== state.me && item.nick.toLowerCase() === cleanNick
+  )
+  if (existingUser) {
+    throw new Error('Táto prezývka sa už používa.')
+  }
+
+  state.me.name = user.name
+  state.me.email = user.email
+  state.me.nick = cleanNick
+
+  for (const channel of state.channels) {
+    if (channel.nick === oldNick) {
+      channel.nick = cleanNick
+      channel.name = user.name
+    }
+    if (channel.ownerNick === oldNick) channel.ownerNick = cleanNick
+    if (channel.members) {
+      channel.members = channel.members.map(name => name === oldName ? user.name : name)
+    }
+    if (channel.memberNicks) {
+      channel.memberNicks = channel.memberNicks.map(nick => nick === oldNick ? cleanNick : nick)
+    }
+    if (channel.invitedNicks) {
+      channel.invitedNicks = channel.invitedNicks.map(nick => nick === oldNick ? cleanNick : nick)
+    }
+    if (channel.bannedNicks) {
+      channel.bannedNicks = channel.bannedNicks.map(nick => nick === oldNick ? cleanNick : nick)
+    }
+    if (channel.kickVotes) {
+      channel.kickVotes = Object.fromEntries(Object.entries(channel.kickVotes)
+        .map(([nick, votes]) => [
+          nick === oldNick ? cleanNick : nick,
+          votes.map(vote => vote === oldNick ? cleanNick : vote)
+        ]))
+    }
+  }
+
+  for (const typingUsers of Object.values(state.typingByChannel)) {
+    if (typingUsers && Object.hasOwn(typingUsers, oldNick)) {
+      typingUsers[cleanNick] = typingUsers[oldNick]
+      delete typingUsers[oldNick]
+    }
+  }
+}
+
 export function createGroup (name, members = [], type = 'public') {
   const cleanName = name.trim()
   if (!cleanName) throw new Error('Zadajte názov kanála.')
@@ -274,6 +322,26 @@ export function createGroup (name, members = [], type = 'public') {
   state.messagesByChannel[group.id] = []
   selectChannel(group.id)
   return group
+}
+
+export function renameGroup (channelId, name) {
+  const channel = findChannel(channelId)
+  if (!channel.group) throw new Error('Tento chat nie je skupina.')
+  if (channel.ownerNick !== state.me.nick) {
+    throw new Error('Názov skupiny môže zmeniť iba jej správca.')
+  }
+
+  const cleanName = name.trim()
+  if (!cleanName) throw new Error('Zadajte názov skupiny.')
+  const duplicate = state.channels.find(item =>
+    item.group &&
+    item.id !== channel.id &&
+    item.name.toLocaleLowerCase() === cleanName.toLocaleLowerCase()
+  )
+  if (duplicate) throw new Error(`Skupina #${cleanName} už existuje.`)
+
+  channel.name = cleanName
+  return channel
 }
 
 export function joinChannel (name, type = 'public') {
@@ -331,6 +399,23 @@ export function revokeFromChannel (channelId, nickname) {
   if (user.nick === channel.ownerNick) throw new Error('Správcu kanála nemožno odobrať.')
   channel.memberNicks = channel.memberNicks.filter(nick => nick !== user.nick)
   channel.members = channel.members.filter(name => name !== user.name)
+  channel.invitedNicks = channel.invitedNicks.filter(nick => nick !== user.nick)
+  return user
+}
+
+export function cancelChannelInvitation (channelId, nickname) {
+  const channel = findChannel(channelId)
+  const canManageInvitations = channel.type === 'private'
+    ? channel.ownerNick === state.me.nick
+    : channel.memberNicks.includes(state.me.nick)
+  if (!canManageInvitations) {
+    throw new Error('Pozvánky môže zrušiť iba správca súkromného kanála alebo člen verejného kanála.')
+  }
+
+  const user = findUser(nickname.replace(/^@/, ''))
+  if (!channel.invitedNicks.includes(user.nick)) {
+    throw new Error(`@${user.nick} nemá v tomto kanáli pozvánku.`)
+  }
   channel.invitedNicks = channel.invitedNicks.filter(nick => nick !== user.nick)
   return user
 }

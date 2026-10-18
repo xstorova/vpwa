@@ -37,40 +37,43 @@
                 'mentioned-me': isMentionedMe(m)
               }"
             >
-              <span
-                class="message-sender cursor-pointer"
-                title="Kliknite pre zobrazenie profilu používateľa"
+              <q-avatar
+                size="40px"
+                color="deep-orange-1"
+                text-color="deep-orange-8"
+                class="message-avatar cursor-pointer"
+                :aria-label="`Otvoriť profil používateľa ${messageSenderName(m)}`"
                 @click.stop="openUserProfile(messageSenderNick(m))"
               >
-                <q-icon name="person" size="14px" />
-                <span class="sender-name-text">{{ messageSenderName(m) }}</span>
-                <span class="sender-nick-chip">@{{ messageSenderNick(m) }}</span>
-              </span>
-              <span
-                v-if="getRecipientNick(m)"
-                class="message-recipient cursor-pointer"
-                title="Kliknite pre profil používateľa"
-                @click.stop="openUserProfile(getRecipientNick(m))"
-              >
-                <q-icon name="alternate_email" size="12px" class="q-mr-xs" />
-                <span v-if="isMentionedMe(m)" class="recipient-badge-me">
-                  Označenie pre vás (@{{ getRecipientNick(m) }})
+                <q-icon name="person" size="26px" />
+              </q-avatar>
+              <div class="message-content">
+                <span
+                  class="message-sender cursor-pointer"
+                  title="Kliknite pre zobrazenie profilu používateľa"
+                  @click.stop="openUserProfile(messageSenderNick(m))"
+                >{{ messageSenderName(m) }}</span>
+                <span class="message-body-content">
+                  <template v-for="(part, pIdx) in parseMessageTokens(m.text)" :key="pIdx">
+                    <span
+                      v-if="part.type === 'mention'"
+                      class="inline-mention-pill cursor-pointer"
+                      title="Kliknite pre profil používateľa"
+                      @click.stop="openUserProfile(part.nick)"
+                    >{{ part.raw }}</span>
+                    <span v-else>{{ part.content }}</span>
+                  </template>
                 </span>
-                <span v-else class="recipient-link-text">
-                  Pre @{{ getRecipientNick(m) }}
+                <span
+                  v-if="getRecipientNick(m) && !isMentionedMe(m)"
+                  class="message-recipient cursor-pointer"
+                  title="Kliknite pre profil používateľa"
+                  @click.stop="openUserProfile(getRecipientNick(m))"
+                >
+                  <q-icon name="alternate_email" size="12px" class="q-mr-xs" />
+                  <span class="recipient-link-text">Pre @{{ getRecipientNick(m) }}</span>
                 </span>
-              </span>
-              <span class="message-body-content">
-                <template v-for="(part, pIdx) in parseMessageTokens(m.text)" :key="pIdx">
-                  <span
-                    v-if="part.type === 'mention'"
-                    class="inline-mention-pill cursor-pointer"
-                    title="Kliknite pre profil používateľa"
-                    @click.stop="openUserProfile(part.nick)"
-                  >{{ part.raw }}</span>
-                  <span v-else>{{ part.content }}</span>
-                </template>
-              </span>
+              </div>
             </div>
           </div>
         </template>
@@ -211,7 +214,7 @@ function showDraft(nick) {
 }
 
 function senderNameByNick(nick) {
-  return state.users.find(user => user.nick === nick)?.name || `@${nick}`
+  return state.users.find(user => user.nick === nick)?.name || 'Používateľ'
 }
 
 function messageSenderName(message) {
@@ -322,41 +325,20 @@ function isMentionedMe(m) {
 }
 
 .message-sender {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin: -2px 0 5px;
+  display: block;
   color: #a05b36;
-  font-size: 0.72rem;
+  font-size: 1rem;
+  line-height: 1.2;
   font-weight: 700;
   transition: opacity 0.15s ease;
 
   &:hover {
     opacity: 0.85;
-
-    .sender-name-text {
-      text-decoration: underline;
-    }
+    text-decoration: underline;
   }
 
   .row.justify-end & {
     color: #ffd6b8;
-  }
-}
-
-.sender-nick-chip {
-  background: rgba(190, 75, 20, 0.09);
-  color: #ba4313;
-  padding: 1px 6px;
-  border-radius: 6px;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.2px;
-
-  .row.justify-end & {
-    background: rgba(255, 255, 255, 0.24);
-    color: #ffffff;
   }
 }
 
@@ -412,6 +394,9 @@ function isMentionedMe(m) {
 }
 
 .bubble {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
   max-width: 60%;
   padding: 10px 16px;
   margin: 6px 0;
@@ -470,32 +455,35 @@ function isMentionedMe(m) {
   }
 }
 
+.message-avatar {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.message-content {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  gap: 3px;
+}
+
+.message-body-content {
+  display: block;
+  width: 100%;
+}
+
 .message-recipient {
   display: flex;
   align-items: center;
-  margin: -2px 0 6px;
+  margin: 0;
   color: #8a5a00;
   font-size: 0.72rem;
   font-weight: 700;
 
-  .recipient-badge-me {
-    background: #fef3c7;
-    color: #92400e;
-    padding: 1px 6px;
-    border-radius: 6px;
-    border: 1px solid #fcd34d;
-    display: inline-flex;
-    align-items: center;
-  }
-
   .row.justify-end & {
     color: #fff3bd;
-
-    .recipient-badge-me {
-      background: rgba(255, 255, 255, 0.25);
-      color: #ffffff;
-      border: 1px solid rgba(255, 255, 255, 0.5);
-    }
   }
 }
 

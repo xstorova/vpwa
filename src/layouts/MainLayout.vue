@@ -8,7 +8,7 @@
     >
       <div class="user-profile row items-center no-wrap cursor-pointer" title="Kliknite pre správu účtu">
         <q-avatar size="48px" color="orange-1" text-color="deep-orange-8" class="profile-avatar">
-          {{ initial(state.me.name) }}
+          <span class="avatar-initial">{{ initial(state.me.name) }}</span>
         </q-avatar>
 
         <div class="user-display-name q-ml-md">
@@ -37,7 +37,7 @@
           <div class="q-pa-md user-account-menu-card">
             <div class="row items-center q-mb-sm">
               <q-avatar size="36px" color="orange-1" text-color="deep-orange-8" class="q-mr-sm">
-                {{ initial(state.me.name) }}
+                <span class="avatar-initial">{{ initial(state.me.name) }}</span>
               </q-avatar>
               <div>
                 <div class="text-weight-bold text-grey-9">{{ state.me.name }}</div>
@@ -61,11 +61,20 @@
               text-color="deep-orange-9"
               :options="[
                 { label: 'Online', value: 'online' },
-                { label: 'Preč', value: 'away' },
+                { label: 'Away', value: 'away' },
                 { label: 'DND', value: 'dnd' },
                 { label: 'Offline', value: 'offline' }
               ]"
               @update:model-value="changeStatus"
+            />
+
+            <q-btn
+              outline
+              color="deep-orange-7"
+              icon="manage_accounts"
+              label="Moje údaje"
+              class="full-width q-mb-md"
+              @click="openProfileEditor"
             />
 
             <q-separator class="q-mb-md" />
@@ -139,7 +148,7 @@
               :color="c.group ? 'deep-orange-1' : 'orange-1'"
               text-color="deep-orange-8"
             >
-              <span v-if="!c.avatar">{{ initial(c.name) }}</span>
+              <span v-if="!c.avatar" class="avatar-initial">{{ initial(c.name) }}</span>
             </q-avatar>
           </q-item-section>
 
@@ -183,12 +192,14 @@
 
       <div
         class="row items-center no-wrap header-clickable-info"
-        :class="{ 'cursor-pointer': !current?.group }"
-        :title="!current?.group ? `Kliknite pre zobrazenie profilu @${current?.nick}` : ''"
-        @click="!current?.group && current?.nick ? openUserProfile(current.nick) : null"
+        :class="{ 'cursor-pointer': !current?.group || current?.ownerNick === state.me.nick }"
+        :title="current?.group
+          ? (current.ownerNick === state.me.nick ? 'Kliknite na úpravu názvu skupiny' : '')
+          : `Kliknite pre zobrazenie profilu @${current?.nick}`"
+        @click="handleChannelTitleClick"
       >
         <q-avatar size="40px" :color="current?.group ? 'deep-orange-1' : 'orange-1'" text-color="deep-orange-8" class="header-user-avatar">
-          {{ initial(current?.name || state.me.name) }}
+          <span class="avatar-initial">{{ initial(current?.name || state.me.name) }}</span>
         </q-avatar>
 
         <div class="header-info-col q-ml-sm q-mr-xs">
@@ -379,6 +390,38 @@
       </q-card>
     </q-dialog>
 
+    <q-dialog v-model="editGroupDialog">
+      <q-card class="group-dialog">
+        <q-form @submit.prevent="saveGroupName">
+          <q-card-section class="row items-center q-pb-sm">
+            <q-avatar color="deep-orange-1" text-color="deep-orange-8" icon="edit" class="q-mr-md" />
+            <div>
+              <div class="text-h6">Upraviť skupinu</div>
+              <div class="text-caption text-grey-7">Zmeňte názov skupiny.</div>
+            </div>
+            <q-space />
+            <q-btn flat round dense icon="close" aria-label="Zavrieť" v-close-popup />
+          </q-card-section>
+
+          <q-card-section class="q-pt-sm">
+            <q-input
+              v-model="editedGroupName"
+              outlined
+              autofocus
+              label="Názov skupiny"
+              color="deep-orange-8"
+              :rules="[value => !!value.trim() || 'Zadajte názov skupiny']"
+            />
+          </q-card-section>
+
+          <q-card-actions align="right" class="q-px-md q-pb-md">
+            <q-btn flat label="Zrušiť" color="grey-7" v-close-popup />
+            <q-btn unelevated type="submit" label="Uložiť názov" color="deep-orange-7" text-color="white" />
+          </q-card-actions>
+        </q-form>
+      </q-card>
+    </q-dialog>
+
     <q-dialog v-model="membersDialog">
       <q-card class="group-dialog">
         <q-card-section class="row items-center q-pb-sm">
@@ -399,7 +442,9 @@
             @click="openUserProfile(member.nick)"
           >
             <q-item-section avatar>
-              <q-avatar color="orange-1" text-color="deep-orange-8">{{ initial(member.name) }}</q-avatar>
+              <q-avatar color="orange-1" text-color="deep-orange-8">
+                <span class="avatar-initial">{{ initial(member.name) }}</span>
+              </q-avatar>
             </q-item-section>
             <q-item-section>
               <q-item-label class="text-weight-medium">{{ member.name }}</q-item-label>
@@ -416,10 +461,23 @@
                 >
                   <q-tooltip>Kliknite pre náhľad konceptu</q-tooltip>
                 </q-badge>
-                <q-badge v-if="member.isOwner" color="deep-orange-7" label="Správca" />
+                <q-badge v-if="member.isOwner" color="blue-7" label="Správca" />
                 <q-badge v-if="member.nick === state.me.nick" color="grey-6" label="Vy" />
                 <q-badge v-else-if="member.isInvited" color="amber-8" label="Pozvánka" />
                 <q-badge :color="statusColor(member.status)" :label="statusLabel(member.status)" />
+                <q-btn
+                  v-if="canRemoveChannelPerson(member)"
+                  flat
+                  round
+                  dense
+                  size="sm"
+                  icon="close"
+                  color="negative"
+                  :aria-label="member.isInvited ? `Zrušiť pozvánku pre ${member.name}` : `Odstrániť ${member.name} z kanála`"
+                  @click.stop="removeChannelPerson(member)"
+                >
+                  <q-tooltip>{{ member.isInvited ? 'Zrušiť pozvánku' : 'Odstrániť z kanála' }}</q-tooltip>
+                </q-btn>
               </div>
             </q-item-section>
           </q-item>
@@ -478,13 +536,73 @@
       </q-card>
     </q-dialog>
 
+    <q-dialog v-model="profileEditorOpen">
+      <q-card class="user-profile-dialog">
+        <q-form @submit.prevent="saveProfile">
+          <q-card-section class="profile-dialog-header">
+            <div class="text-h6 text-weight-bold">Údaje profilu</div>
+            <div class="text-caption text-grey-7">Upravte údaje zadané pri registrácii.</div>
+          </q-card-section>
+
+          <q-separator />
+
+          <q-card-section class="q-gutter-y-md">
+            <q-input
+              v-model="profileForm.name"
+              label="Meno a priezvisko"
+              outlined
+              dense
+              color="deep-orange-8"
+              :rules="[
+                value => !!value.trim() || 'Meno a priezvisko je povinné',
+                value => value.trim().length >= 2 || 'Meno musí mať aspoň 2 znaky'
+              ]"
+            />
+            <q-input
+              v-model="profileForm.nick"
+              label="Prezývka"
+              prefix="@"
+              outlined
+              dense
+              color="deep-orange-8"
+              :rules="[
+                value => !!value.trim() || 'Prezývka je povinná',
+                value => /^[a-zA-Z0-9_.-]+$/.test(value.replace(/^@/, '')) || 'Iba písmená, čísla, podčiarkovník, bodka a pomlčka',
+                value => value.replace(/^@/, '').length >= 3 || 'Prezývka musí mať aspoň 3 znaky'
+              ]"
+            />
+            <q-input
+              v-model="profileForm.email"
+              type="email"
+              label="Emailová adresa"
+              outlined
+              dense
+              color="deep-orange-8"
+              :rules="[
+                value => !!value || 'Email je povinný',
+                value => isValidEmail(value) || 'Zadajte platný email'
+              ]"
+            />
+            <div class="text-caption text-grey-7">
+              Heslo sa z bezpečnostných dôvodov nezobrazuje ani neukladá.
+            </div>
+          </q-card-section>
+
+          <q-card-actions align="right" class="q-px-md q-pb-md">
+            <q-btn flat label="Zrušiť" color="grey-7" v-close-popup />
+            <q-btn unelevated type="submit" label="Uložiť údaje" color="deep-orange-7" text-color="white" />
+          </q-card-actions>
+        </q-form>
+      </q-card>
+    </q-dialog>
+
     <!-- Dialóg: Profil používateľa (rozkliknutie človeka v chate) -->
     <q-dialog :model-value="Boolean(state.activeUserProfile)" @hide="state.activeUserProfile = null">
       <q-card class="user-profile-dialog">
         <q-card-section class="profile-dialog-header column items-center q-pt-lg q-pb-md text-center">
           <q-btn flat round dense icon="close" class="profile-dialog-close absolute-top-right q-ma-sm" v-close-popup />
           <q-avatar size="68px" color="deep-orange-1" text-color="deep-orange-8" class="profile-dialog-avatar">
-            {{ initial(state.activeUserProfile?.name) }}
+            <span class="avatar-initial">{{ initial(state.activeUserProfile?.name) }}</span>
             <q-badge
               floating
               rounded
@@ -595,7 +713,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch, watchEffect } from 'vue'
+import { computed, reactive, ref, watch, watchEffect } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { authState } from '../services/auth'
@@ -608,14 +726,17 @@ import {
   inviteToChannel,
   joinChannel,
   kickFromChannel,
+  cancelChannelInvitation,
   leaveChannel,
   listChannelMembers,
   receiveMessage,
   revokeFromChannel,
   selectChannel,
+  renameGroup,
   setUserStatus,
   send,
   openUserProfile,
+  updateCurrentUserProfile,
   state
 } from '../data/mock'
 
@@ -624,14 +745,18 @@ const $q = useQuasar()
 const drawer = ref(true)
 const text = ref('')
 const groupDialog = ref(false)
+const editGroupDialog = ref(false)
 const friendDialog = ref(false)
 const membersDialog = ref(false)
+const profileEditorOpen = ref(false)
 const groupName = ref('')
+const editedGroupName = ref('')
 const groupMembers = ref('')
 const groupType = ref('public')
 const friendNickname = ref('')
 const incomingDemoSequence = ref(0)
 const notificationPermission = ref(typeof Notification === 'undefined' ? 'unsupported' : Notification.permission)
+const profileForm = reactive({ name: '', nick: '', email: '' })
 
 const current = computed(() => state.channels.find(c => c.id === state.activeId) || state.channels[0])
 const notificationPermissionLabel = computed(() => {
@@ -657,12 +782,43 @@ watchEffect(() => {
   if (authState.user.value) {
     state.me.name = authState.user.value.name
     state.me.nick = authState.user.value.nick
+    state.me.email = authState.user.value.email
   }
 })
 
 function handleLogout() {
   authState.logout()
   router.push('/login')
+}
+
+function openProfileEditor() {
+  profileForm.name = state.me.name || ''
+  profileForm.nick = state.me.nick || ''
+  profileForm.email = state.me.email || ''
+  profileEditorOpen.value = true
+}
+
+function isValidEmail(value) {
+  const emailPattern = /^(?=[a-zA-Z0-9@._%+-]{6,254}$)[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+  return emailPattern.test(value)
+}
+
+function saveProfile() {
+  try {
+    const oldNick = state.me.nick
+    const oldName = state.me.name
+    const cleanNick = profileForm.nick.trim().replace(/^@/, '').toLowerCase()
+    if (state.users.some(user => user !== state.me && user.nick.toLowerCase() === cleanNick)) {
+      throw new Error('Táto prezývka sa už používa.')
+    }
+
+    const user = authState.updateProfile(profileForm)
+    updateCurrentUserProfile(oldNick, oldName, user)
+    profileEditorOpen.value = false
+    notify('Údaje profilu boli uložené.')
+  } catch (error) {
+    notify(error.message || 'Údaje sa nepodarilo uložiť.', 'negative')
+  }
 }
 
 function initial(name) {
@@ -677,11 +833,11 @@ function membersLabel(channel) {
 }
 
 function statusLabel(status) {
-  return ({ online: 'Online', away: 'Preč', dnd: 'Nerušiť', offline: 'Offline' })[status] || 'Offline'
+  return ({ online: 'Online', away: 'Away', dnd: 'DND', offline: 'Offline' })[status] || 'Offline'
 }
 
 function statusColor(status) {
-  return ({ online: 'positive', away: 'amber-8', dnd: 'warning', offline: 'grey-6' })[status] || 'grey-6'
+  return ({ online: 'positive', away: 'amber-8', dnd: 'red-7', offline: 'grey-6' })[status] || 'grey-6'
 }
 
 function changeStatus(status) {
@@ -779,6 +935,48 @@ function showMembers() {
 function showMemberDraft(member) {
   if (!state.typingByChannel[current.value.id]?.[member.nick]) return
   state.activeDraftPreview = { channelId: current.value.id, nick: member.nick }
+}
+
+function canRemoveChannelPerson(member) {
+  const channel = current.value
+  if (!channel?.group || member.nick === state.me.nick || member.isOwner) return false
+  if (channel.type === 'private') return channel.ownerNick === state.me.nick
+  return channel.memberNicks.includes(state.me.nick)
+}
+
+function removeChannelPerson(member) {
+  runAction(
+    () => {
+      if (member.isInvited) return cancelChannelInvitation(current.value.id, member.nick)
+      if (current.value.type === 'private') return revokeFromChannel(current.value.id, member.nick)
+      return kickFromChannel(current.value.id, member.nick)
+    },
+    result => {
+      if (member.isInvited) return `Pozvánka pre @${result.nick} bola zrušená.`
+      if (current.value.type === 'private') return `@${result.nick} bol odstránený z kanála.`
+      return result.banned
+        ? `@${result.user.nick} bol odstránený a zabanovaný.`
+        : `@${result.user.nick} bol odstránený. Počet hlasov: ${result.votes}/3.`
+    }
+  )
+}
+
+function handleChannelTitleClick() {
+  if (current.value?.group) {
+    if (current.value.ownerNick === state.me.nick) {
+      editedGroupName.value = current.value.name
+      editGroupDialog.value = true
+    }
+    return
+  }
+  if (current.value?.nick) openUserProfile(current.value.nick)
+}
+
+function saveGroupName() {
+  runAction(() => renameGroup(current.value.id, editedGroupName.value), group => {
+    editGroupDialog.value = false
+    return `Názov skupiny bol zmenený na „${group.name}“.`
+  })
 }
 
 function mentionUser(nick) {
@@ -1098,6 +1296,16 @@ function handleClose(channelId) {
   font-size: 1.25rem;
   font-weight: 700;
   flex-shrink: 0;
+}
+
+.avatar-initial {
+  display: inline-flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  text-align: center;
 }
 
 .user-display-name {

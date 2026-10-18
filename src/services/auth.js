@@ -72,6 +72,30 @@ export const authState = {
     return userData
   },
 
+  updateProfile({ name, email, nick }) {
+    if (!currentUser.value) {
+      throw new Error('Nie ste prihlásený.')
+    }
+
+    const cleanName = name.trim()
+    const cleanEmail = email.trim()
+    const cleanNick = nick.trim().replace(/^@/, '').toLowerCase()
+    if (cleanName.length < 2) {
+      throw new Error('Meno musí mať aspoň 2 znaky.')
+    }
+    if (!/^(?=[a-zA-Z0-9@._%+-]{6,254}$)[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(cleanEmail)) {
+      throw new Error('Zadajte platný email.')
+    }
+    if (!/^[a-zA-Z0-9_.-]{3,}$/.test(cleanNick)) {
+      throw new Error('Prezývka musí mať aspoň 3 znaky a môže obsahovať iba písmená, čísla, podčiarkovník, bodku a pomlčku.')
+    }
+
+    const updatedUser = { ...currentUser.value, name: cleanName, email: cleanEmail, nick: cleanNick }
+    localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(updatedUser))
+    Object.assign(currentUser.value, updatedUser)
+    return currentUser.value
+  },
+
   logout() {
     currentUser.value = null
     token.value = null
