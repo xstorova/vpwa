@@ -34,9 +34,27 @@
             </div>
 
             <div class="row items-center q-gutter-x-xs q-mb-md">
-              <q-badge color="positive" rounded />
-              <span class="text-caption text-grey-7">Online</span>
+              <q-badge :color="statusColor(state.me.status)" rounded />
+              <span class="text-caption text-grey-7">{{ statusLabel(state.me.status) }}</span>
             </div>
+
+            <div class="text-caption text-grey-7 q-mb-xs">Môj stav</div>
+            <q-btn-toggle
+              :model-value="state.me.status"
+              spread
+              unelevated
+              class="q-mb-md"
+              toggle-color="deep-orange-7"
+              color="orange-1"
+              text-color="deep-orange-9"
+              :options="[
+                { label: 'Online', value: 'online' },
+                { label: 'Preč', value: 'away' },
+                { label: 'DND', value: 'dnd' },
+                { label: 'Offline', value: 'offline' }
+              ]"
+              @update:model-value="changeStatus"
+            />
 
             <q-separator class="q-mb-md" />
 
@@ -150,7 +168,9 @@
       <div class="q-ml-md">
         <div class="header-channel-title">{{ current?.name || 'Chat' }}</div>
         <div class="header-channel-caption">
-          {{ current?.group ? `${current.type === 'private' ? 'Súkromný' : 'Verejný'} kanál • ${membersLabel(current)}` : 'Osobný chat • online' }}
+          {{ current?.group
+            ? `${current.type === 'private' ? 'Súkromný' : 'Verejný'} kanál • ${membersLabel(current)}`
+            : `Osobný chat • ${statusLabel(state.users.find(user => user.nick === current?.nick)?.status || 'online')}` }}
         </div>
       </div>
 
@@ -170,7 +190,29 @@
         <q-tooltip>Členovia kanála</q-tooltip>
       </q-btn>
       <q-btn flat round icon="search" size="md" color="grey-7" class="header-icon-btn" />
-      <q-btn flat round icon="settings" size="md" color="grey-7" class="q-mr-xs header-icon-btn" />
+      <q-btn flat round icon="settings" size="md" color="grey-7" class="q-mr-xs header-icon-btn" aria-label="Nastavenia notifikácií">
+        <q-menu>
+          <q-list style="min-width: 290px">
+            <q-item-label header>Nastavenia správ</q-item-label>
+            <q-item>
+              <q-item-section>
+                <q-item-label>Notifikácie iba pre správy adresované mne</q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-toggle v-model="state.me.notifyOnlyMentions" color="deep-orange-7" />
+              </q-item-section>
+            </q-item>
+            <q-separator />
+            <q-item clickable v-close-popup @click="enableBrowserNotifications">
+              <q-item-section avatar><q-icon name="notifications_active" color="deep-orange-7" /></q-item-section>
+              <q-item-section>
+                <q-item-label>Povoliť notifikácie prehliadača</q-item-label>
+                <q-item-label caption>{{ notificationPermissionLabel }}</q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-menu>
+      </q-btn>
       <q-btn flat round icon="push_pin" size="md" color="grey-7" class="header-icon-btn" />
     </q-header>
 
@@ -208,7 +250,17 @@
         </q-menu>
       </q-btn>
       <q-btn round unelevated class="footer-action-btn q-ml-md" icon="image" size="md" />
-      <q-btn round unelevated class="footer-action-btn q-ml-sm" icon="add" size="md" />
+      <q-btn
+        round
+        unelevated
+        class="footer-action-btn q-ml-sm"
+        icon="add"
+        size="md"
+        aria-label="Simulovať prichádzajúcu správu"
+        @click="simulateIncoming"
+      >
+        <q-tooltip>Simulovať prichádzajúcu správu</q-tooltip>
+      </q-btn>
       <q-btn round unelevated class="footer-action-btn q-ml-sm" icon="send" size="md" @click="submit" />
     </q-footer>
 
@@ -252,7 +304,7 @@
         <q-card-section class="row items-center q-pb-sm">
           <q-avatar color="deep-orange-1" text-color="deep-orange-8" icon="groups" class="q-mr-md" />
           <div>
-            <div class="text-h6">Členovia kanála</div>
+            <div class="text-h6">Členovia a pozvaní</div>
             <div class="text-caption text-grey-7">{{ current?.name }}</div>
           </div>
           <q-space />
@@ -260,7 +312,12 @@
         </q-card-section>
 
         <q-list separator>
-          <q-item v-for="member in channelMembers" :key="member.nick">
+          <q-item
+            v-for="member in channelMembers"
+            :key="member.nick"
+            :clickable="Boolean(state.typingByChannel[current.id]?.[member.nick])"
+            @click="showMemberDraft(member)"
+          >
             <q-item-section avatar>
               <q-avatar color="orange-1" text-color="deep-orange-8">{{ initial(member.name) }}</q-avatar>
             </q-item-section>
@@ -269,8 +326,12 @@
               <q-item-label caption>@{{ member.nick }}</q-item-label>
             </q-item-section>
             <q-item-section side>
-              <q-badge v-if="member.isOwner" color="deep-orange-7" label="Správca" />
-              <q-badge v-else-if="member.nick === state.me.nick" color="grey-6" label="Vy" />
+              <div class="row items-center q-gutter-x-xs">
+                <q-badge v-if="member.isOwner" color="deep-orange-7" label="Správca" />
+                <q-badge v-if="member.nick === state.me.nick" color="grey-6" label="Vy" />
+                <q-badge v-else-if="member.isInvited" color="amber-8" label="Pozvánka" />
+                <q-badge :color="statusColor(member.status)" :label="statusLabel(member.status)" />
+              </div>
             </q-item-section>
           </q-item>
         </q-list>
@@ -345,8 +406,10 @@ import {
   kickFromChannel,
   leaveChannel,
   listChannelMembers,
+  receiveMessage,
   revokeFromChannel,
   selectChannel,
+  setUserStatus,
   send,
   state
 } from '../data/mock'
@@ -362,13 +425,25 @@ const groupName = ref('')
 const groupMembers = ref('')
 const groupType = ref('public')
 const friendNickname = ref('')
+const incomingDemoSequence = ref(0)
+const notificationPermission = ref(typeof Notification === 'undefined' ? 'unsupported' : Notification.permission)
 
 const current = computed(() => state.channels.find(c => c.id === state.activeId) || state.channels[0])
-const channelMembers = computed(() => (
-  current.value?.group && current.value.memberNicks?.includes(state.me.nick)
-    ? getChannelMembers(current.value.id)
-    : []
-))
+const notificationPermissionLabel = computed(() => {
+  if (notificationPermission.value === 'unsupported') return 'Tento prehliadač ich nepodporuje'
+  return notificationPermission.value === 'granted' ? 'Povolené' : 'Kliknutím požiadajte o povolenie'
+})
+const channelMembers = computed(() => {
+  const channel = current.value
+  if (!channel?.group || !channel.memberNicks?.includes(state.me.nick)) return []
+
+  const members = getChannelMembers(channel.id)
+  const invitations = state.users
+    .filter(user => channel.invitedNicks?.includes(user.nick) && !channel.memberNicks.includes(user.nick))
+    .map(user => ({ ...user, status: user.status || 'online', isOwner: false, isInvited: true }))
+
+  return [...members, ...invitations]
+})
 const visibleChannels = computed(() => [...state.channels]
   .filter(channel => !channel.group || channel.memberNicks?.includes(state.me.nick) || channel.invitedNicks?.includes(state.me.nick))
   .sort((a, b) => Number(b.invitedNicks?.includes(state.me.nick)) - Number(a.invitedNicks?.includes(state.me.nick))))
@@ -394,6 +469,72 @@ function membersLabel(channel) {
   const count = channel.memberNicks?.length || channel.members?.length || 0
   const noun = count === 1 ? 'člen' : count < 5 ? 'členovia' : 'členov'
   return `${count} ${noun}`
+}
+
+function statusLabel(status) {
+  return ({ online: 'Online', away: 'Preč', dnd: 'Nerušiť', offline: 'Offline' })[status] || 'Offline'
+}
+
+function statusColor(status) {
+  return ({ online: 'positive', away: 'amber-8', dnd: 'warning', offline: 'grey-6' })[status] || 'grey-6'
+}
+
+function changeStatus(status) {
+  const delivered = setUserStatus(status)
+  notify(`Váš stav je teraz ${statusLabel(status)}.`)
+  if (delivered.length) {
+    notify(`Po návrate do online ste dostali ${delivered.length} ${delivered.length === 1 ? 'správu' : 'správy'}.`)
+  }
+}
+
+async function enableBrowserNotifications() {
+  if (typeof Notification === 'undefined') {
+    notify('Tento prehliadač nepodporuje notifikácie.', 'negative')
+    return
+  }
+
+  try {
+    const permission = await Notification.requestPermission()
+    notificationPermission.value = permission
+    notify(permission === 'granted'
+      ? 'Notifikácie prehliadača sú povolené.'
+      : 'Prehliadač nepovolil notifikácie.',
+    permission === 'granted' ? 'positive' : 'warning')
+  } catch (error) {
+    notify(`Nepodarilo sa povoliť notifikácie: ${error.message}`, 'negative')
+  }
+}
+
+function notifyAboutIncoming(result) {
+  if (
+    !result.delivered ||
+    state.me.status !== 'online' ||
+    $q.appVisible !== false ||
+    (state.me.notifyOnlyMentions && result.message.recipientNick !== state.me.nick) ||
+    typeof Notification === 'undefined' ||
+    Notification.permission !== 'granted'
+  ) return
+
+  new Notification(result.message.senderName, {
+    body: `${result.channel.name}: ${result.message.text.slice(0, 100)}`,
+    tag: `message-${result.channel.id}`
+  })
+}
+
+function simulateIncoming() {
+  if (!current.value) return
+
+  incomingDemoSequence.value += 1
+  const isMention = incomingDemoSequence.value % 2 === 0
+  const text = isMention
+    ? `@${state.me.nick} Ahoj, toto je ukážková adresovaná správa.`
+    : 'Ahoj, toto je nová ukážková správa.'
+
+  runAction(() => receiveMessage(current.value.id, text, isMention ? state.me.nick : undefined), result => {
+    if (result.queued) return 'Ste offline: správa sa zobrazí po prepnutí do online stavu.'
+    notifyAboutIncoming(result)
+    return ''
+  })
 }
 
 function selectChat(channelId) {
@@ -435,6 +576,11 @@ function showMembers() {
     membersDialog.value = true
     return ''
   })
+}
+
+function showMemberDraft(member) {
+  if (!state.typingByChannel[current.value.id]?.[member.nick]) return
+  state.activeDraftPreview = { channelId: current.value.id, nick: member.nick }
 }
 
 function submit() {
@@ -544,6 +690,11 @@ function handleClose(channelId) {
   font-family: Inter, Roboto, sans-serif;
   height: 100vh;
   overflow: hidden;
+
+  .q-page-container {
+    height: 100vh;
+    overflow: hidden;
+  }
 }
 
 .sidebar-container {

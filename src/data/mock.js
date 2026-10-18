@@ -1,13 +1,20 @@
 import { reactive } from 'vue'
 import { authState } from '../services/auth.js'
 
-const currentUser = authState.user.value || { name: 'Michal Novák', nick: 'michal', status: 'online' }
+const currentUser = authState.user.value || {
+  name: 'Michal Novák',
+  nick: 'michal',
+  status: 'online',
+  notifyOnlyMentions: false
+}
+currentUser.status ||= 'online'
+currentUser.notifyOnlyMentions ??= false
 const initialUsers = [
   currentUser,
-  { name: 'Nina Kováčová', nick: 'nina' },
-  { name: 'Tomáš Bielik', nick: 'tomas' },
-  { name: 'Peter Novotný', nick: 'peter' },
-  { name: 'Laura Poláková', nick: 'laura' }
+  { name: 'Nina Kováčová', nick: 'nina', status: 'online' },
+  { name: 'Tomáš Bielik', nick: 'tomas', status: 'online' },
+  { name: 'Peter Novotný', nick: 'peter', status: 'offline' },
+  { name: 'Laura Poláková', nick: 'laura', status: 'online' }
 ]
 
 function makeChannel (channel) {
@@ -27,6 +34,13 @@ export const state = reactive({
   me: currentUser,
   users: initialUsers,
   activeId: 1,
+  historyPagesLoadedByChannel: {},
+  pendingMessagesByChannel: {},
+  typingByChannel: {
+    2: {
+      nina: 'Ešte dnes doplním posledné úpravy do návrhu.'
+    }
+  },
   channels: [
     { id: 1, name: 'Nina Kováčová', nick: 'nina', group: false, active: true, unread: 0, avatar: null },
     makeChannel({
@@ -122,6 +136,103 @@ export function selectChannel (channelId) {
   const messages = state.messagesByChannel[channel.id] || []
   state.messages.splice(0, state.messages.length, ...messages)
   state.messagesByChannel[channel.id] = messages.slice()
+}
+
+export function loadOlderMessages (channelId, count = 12) {
+  const channel = state.channels.find(item => item.id === channelId)
+  if (!channel) return false
+
+  const page = state.historyPagesLoadedByChannel[channelId] || 0
+  if (page >= 3) return false
+
+  const messages = Array.from({ length: count }, (_, index) => {
+    const daysAgo = (page * count) + count - index
+    const date = new Date(Date.now() - daysAgo * 86400000).toLocaleDateString('sk-SK')
+    return {
+      id: `history-${channelId}-${page}-${index}`,
+      mine: index % 4 === 0,
+      text: [
+        'Posielam aktualizáciu k úlohe.',
+        'Pozriem sa na to a dám vedieť.',
+        'Dohodnuté, ďakujem!',
+        'Môžeme to prebrať na ďalšom stretnutí?'
+      ][index % 4],
+      date
+    }
+  })
+
+  state.historyPagesLoadedByChannel[channelId] = page + 1
+  if (state.activeId === channelId) {
+    state.messages.unshift(...messages)
+    state.messagesByChannel[channelId] = state.messages.slice()
+  } else {
+    const currentMessages = state.messagesByChannel[channelId] || []
+    state.messagesByChannel[channelId] = [...messages, ...currentMessages]
+  }
+  return true
+}
+
+export function receiveMessage (channelId, text, recipientNick) {
+  const channel = state.channels.find(item => item.id === channelId)
+  if (!channel) throw new Error('Chat sa nenašiel.')
+  if (channel.group && !channel.memberNicks.includes(state.me.nick)) {
+    throw new Error('Do tohto kanála nemáte prístup.')
+  }
+
+  const sender = channel.group
+    ? state.users.find(user => user.nick === 'nina' && channel.memberNicks.includes(user.nick))
+    : state.users.find(user => user.nick === channel.nick)
+  const message = {
+    id: `incoming-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    mine: false,
+    senderNick: sender?.nick || 'ukazka',
+    senderName: sender?.name || 'Ukážkový používateľ',
+    text,
+    recipientNick,
+    date: new Date().toLocaleDateString('sk-SK')
+  }
+
+  if (state.me.status === 'offline') {
+    const pending = state.pendingMessagesByChannel[channelId] || []
+    pending.push(message)
+    state.pendingMessagesByChannel[channelId] = pending
+    return { delivered: false, queued: true, channel, message }
+  }
+
+  state.messagesByChannel[channelId] = [...(state.messagesByChannel[channelId] || []), message]
+  if (state.activeId === channelId) {
+    state.messages.push(message)
+    channel.unread = 0
+  } else {
+    channel.unread += 1
+  }
+  return { delivered: true, queued: false, channel, message }
+}
+
+export function setUserStatus (status) {
+  if (!['online', 'away', 'dnd', 'offline'].includes(status)) {
+    throw new Error('Neplatný stav používateľa.')
+  }
+
+  state.me.status = status
+  const user = state.users.find(item => item.nick === state.me.nick)
+  if (user) user.status = status
+
+  const deliveredMessages = []
+  if (status === 'online') {
+    for (const [channelId, pending] of Object.entries(state.pendingMessagesByChannel)) {
+      const channel = state.channels.find(item => item.id === Number(channelId))
+      if (!channel || (channel.group && !channel.memberNicks.includes(state.me.nick))) continue
+
+      const currentMessages = state.messagesByChannel[channel.id] || []
+      state.messagesByChannel[channel.id] = [...currentMessages, ...pending]
+      if (state.activeId === channel.id) state.messages.push(...pending)
+      else channel.unread += pending.length
+      deliveredMessages.push(...pending)
+      delete state.pendingMessagesByChannel[channelId]
+    }
+  }
+  return deliveredMessages
 }
 
 export function createGroup (name, members = [], type = 'public') {
@@ -274,7 +385,7 @@ export function getChannelMembers (channelId) {
 
   return channel.memberNicks.map(nick => {
     const user = findUser(nick)
-    return { ...user, isOwner: channel.ownerNick === nick }
+    return { ...user, status: user.status || 'online', isOwner: channel.ownerNick === nick }
   })
 }
 
