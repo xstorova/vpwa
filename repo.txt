@@ -1,3 +1,1 @@
-# Semestrálny projekt - aplikácia na textovú komunikáciu v štýle IRC (Slack)
-# Odkaz na verejný GitHub repozitár:
-https://github.com/YOUR_USERNAME/Send_light_app
+https://github.com/xstorova/vpwa
