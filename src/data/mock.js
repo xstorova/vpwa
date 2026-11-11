@@ -65,6 +65,20 @@ export const state = reactive({
       members: [currentUser.name, 'Peter Novotný'],
       memberNicks: [currentUser.nick, 'peter'],
       lastActivityAt: Date.now() - 1000 * 60 * 60 * 24 * 34 // 34 dní neaktívny (> 30 dní)
+    }),
+    // Ukážková čakajúca pozvánka - používateľ ešte nie je členom, je pripnutá navrchu
+    makeChannel({
+      id: 6,
+      name: 'Tímový projekt VPWA',
+      group: true,
+      type: 'private',
+      ownerNick: 'tomas',
+      active: true,
+      unread: 0,
+      avatar: null,
+      members: ['Tomáš Bielik', 'Laura Poláková'],
+      memberNicks: ['tomas', 'laura'],
+      invitedNicks: [currentUser.nick]
     })
   ],
   messages: [
@@ -447,13 +461,8 @@ export function kickFromChannel (channelId, nickname) {
   return { user, banned: false, votes: votes.length }
 }
 
-export function leaveChannel (channelId) {
-  const channel = findChannel(channelId)
-  if (channel.ownerNick === state.me.nick) {
-    removeChannel(channel)
-    return { destroyed: true, name: channel.name }
-  }
-
+// Odoberie prihláseného používateľa z kanála, kanál ostáva ostatným členom.
+function removeMeFromChannel (channel) {
   channel.memberNicks = channel.memberNicks.filter(nick => nick !== state.me.nick)
   channel.members = channel.members.filter(name => name !== state.me.name)
   channel.invitedNicks = channel.invitedNicks.filter(nick => nick !== state.me.nick)
@@ -461,7 +470,89 @@ export function leaveChannel (channelId) {
     const fallback = state.channels.find(item => item.id !== channel.id && (!item.group || item.memberNicks?.includes(state.me.nick)))
     if (fallback) selectChannel(fallback.id)
   }
+}
+
+// Príkaz /cancel - podľa zadania: ak kanál opustí správca, kanál zaniká.
+export function leaveChannel (channelId) {
+  const channel = findChannel(channelId)
+  if (channel.ownerNick === state.me.nick) {
+    removeChannel(channel)
+    return { destroyed: true, name: channel.name }
+  }
+
+  removeMeFromChannel(channel)
   return { destroyed: false, name: channel.name }
+}
+
+// Tlačidlo "Opustiť skupinu" v zozname - skupina sa ostatným nezmaže.
+// Ak odchádza správca, správcovstvo prejde na ďalšieho člena.
+// Ak v skupine nikto iný nie je, skupina zanikne (nemá komu ostať).
+export function leaveGroup (channelId) {
+  const channel = findChannel(channelId)
+  const otherMembers = channel.memberNicks.filter(nick => nick !== state.me.nick)
+
+  if (channel.ownerNick === state.me.nick) {
+    if (!otherMembers.length) {
+      removeChannel(channel)
+      return { destroyed: true, name: channel.name }
+    }
+    channel.ownerNick = otherMembers[0]
+  }
+
+  removeMeFromChannel(channel)
+  return { destroyed: false, name: channel.name, newOwnerNick: channel.ownerNick }
+}
+
+// Prijatie pozvánky - používateľ sa stane členom a kanál sa otvorí.
+export function acceptInvitation (channelId) {
+  const channel = findChannel(channelId)
+  if (!channel.invitedNicks.includes(state.me.nick)) {
+    throw new Error(`Do kanála #${channel.name} nemáte pozvánku.`)
+  }
+  channel.invitedNicks = channel.invitedNicks.filter(nick => nick !== state.me.nick)
+  addMember(channel, state.me)
+  selectChannel(channel.id)
+  return channel
+}
+
+// Odmietnutie pozvánky - pozvánka zmizne, kanál ostáva jeho členom.
+export function declineInvitation (channelId) {
+  const channel = findChannel(channelId)
+  channel.invitedNicks = channel.invitedNicks.filter(nick => nick !== state.me.nick)
+  if (state.activeId === channel.id) {
+    const fallback = state.channels.find(item => item.id !== channel.id && (!item.group || item.memberNicks?.includes(state.me.nick)))
+    if (fallback) selectChannel(fallback.id)
+  }
+  return channel
+}
+
+// Len pre ukážku: niekto iný pozve prihláseného používateľa do novej skupiny.
+const demoInvitations = [
+  { name: 'Tímový projekt VPWA', ownerNick: 'tomas', memberNicks: ['tomas', 'laura'], type: 'private' },
+  { name: 'Študovňa FIIT', ownerNick: 'laura', memberNicks: ['laura', 'nina', 'peter'], type: 'public' },
+  { name: 'Futbal v stredu', ownerNick: 'peter', memberNicks: ['peter', 'tomas'], type: 'public' }
+]
+
+export function simulateInvitation () {
+  const template = demoInvitations.find(item => !channelByName(item.name))
+  if (!template) throw new Error('Všetky ukážkové pozvánky už boli použité.')
+
+  const channel = makeChannel({
+    id: nextChannelId(),
+    name: template.name,
+    group: true,
+    type: template.type,
+    ownerNick: template.ownerNick,
+    active: true,
+    unread: 0,
+    avatar: null,
+    members: template.memberNicks.map(nick => findUser(nick).name),
+    memberNicks: [...template.memberNicks],
+    invitedNicks: [state.me.nick]
+  })
+  state.channels.push(channel)
+  state.messagesByChannel[channel.id] = []
+  return channel
 }
 
 export function closeChannel (channelId) {

@@ -201,7 +201,6 @@ import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { authState } from '../services/auth'
-import { state } from '../data/mock'
 
 const $q = useQuasar()
 const router = useRouter()
@@ -231,9 +230,8 @@ function isValidEmail(val) {
 async function handleLogin() {
   loading.value = true
   try {
-    const user = await authState.login(loginForm.email, loginForm.password)
-    state.me.name = user.name
-    state.me.nick = user.nick
+    // Údaje prihláseného používateľa do ukážkových dát prenesie MainLayout (watchEffect)
+    await authState.login(loginForm.email, loginForm.password)
 
     const redirectPath = route.query.redirect || '/'
     router.push(redirectPath)
@@ -251,12 +249,8 @@ async function handleLogin() {
 async function handleRegister() {
   loading.value = true
   try {
-    const user = await authState.register(registerForm.name, registerForm.email, registerForm.password, registerForm.nick)
-    state.me.name = user.name
-    state.me.nick = user.nick
-    if (!state.users.some(u => u.nick === user.nick)) {
-      state.users.push({ name: user.name, nick: user.nick, status: 'online' })
-    }
+    // Údaje nového používateľa do ukážkových dát prenesie MainLayout (watchEffect)
+    await authState.register(registerForm.name, registerForm.email, registerForm.password, registerForm.nick)
 
     const redirectPath = route.query.redirect || '/'
     router.push(redirectPath)

@@ -114,6 +114,65 @@
         />
       </div>
 
+      <!-- Pozvánky sú pripnuté navrchu, kým ich používateľ neprijme alebo neodmietne -->
+      <template v-if="invitedChannels.length">
+        <div class="sidebar-section-title row items-center no-wrap">
+          <q-icon name="push_pin" size="16px" color="amber-9" class="q-mr-xs" />
+          <span>Pozvánky</span>
+          <q-badge rounded color="amber-8" class="q-ml-sm" :label="invitedChannels.length" />
+        </div>
+
+        <q-list class="sidebar-invite-list">
+          <q-item
+            v-for="c in invitedChannels"
+            :key="`invite-${c.id}`"
+            class="channel-row-item is-invited"
+          >
+            <q-item-section avatar class="channel-avatar-cell">
+              <q-avatar size="36px" color="amber-2" text-color="amber-10">
+                <span class="avatar-initial">{{ initial(c.name) }}</span>
+              </q-avatar>
+            </q-item-section>
+
+            <q-item-section class="channel-name-text">
+              {{ c.name }}
+              <q-item-label caption class="channel-members-caption">
+                {{ c.type === 'private' ? 'Súkromný' : 'Verejný' }} • pozýva @{{ c.ownerNick }}
+              </q-item-label>
+            </q-item-section>
+
+            <q-item-section side class="invite-actions">
+              <div class="row no-wrap q-gutter-x-xs">
+                <q-btn
+                  round
+                  dense
+                  unelevated
+                  size="sm"
+                  icon="check"
+                  color="positive"
+                  :aria-label="`Prijať pozvánku do ${c.name}`"
+                  @click.stop="handleAcceptInvite(c.id)"
+                >
+                  <q-tooltip>Prijať</q-tooltip>
+                </q-btn>
+                <q-btn
+                  round
+                  dense
+                  flat
+                  size="sm"
+                  icon="close"
+                  color="negative"
+                  :aria-label="`Odmietnuť pozvánku do ${c.name}`"
+                  @click.stop="handleDeclineInvite(c.id)"
+                >
+                  <q-tooltip>Odmietnuť</q-tooltip>
+                </q-btn>
+              </div>
+            </q-item-section>
+          </q-item>
+        </q-list>
+      </template>
+
       <div class="sidebar-section-title row items-center no-wrap">
         <span>Moje chaty</span>
         <q-space />
@@ -126,10 +185,7 @@
           clickable
           v-ripple
           class="channel-row-item"
-          :class="{
-            'is-selected': c.id === state.activeId,
-            'is-invited': c.group && c.invitedNicks?.includes(state.me.nick)
-          }"
+          :class="{ 'is-selected': c.id === state.activeId }"
           @click="selectChat(c.id)"
         >
           <q-item-section side class="status-indicator-cell">
@@ -155,17 +211,17 @@
           <q-item-section class="channel-name-text">
             {{ c.name }}
             <q-item-label v-if="c.group && c.members?.length" caption class="channel-members-caption">
-              {{ c.invitedNicks?.includes(state.me.nick) ? 'Pozvánka • ' : '' }}{{ membersLabel(c) }}
+              {{ membersLabel(c) }}
             </q-item-label>
           </q-item-section>
 
           <q-item-section v-if="c.group" side>
-            <q-btn flat round dense icon="more_vert" color="grey-7" aria-label="Možnosti kanála">
+            <q-btn flat round dense icon="more_vert" color="grey-7" aria-label="Možnosti kanála" @click.stop>
               <q-menu>
                 <q-list dense style="min-width: 170px">
-                  <q-item v-if="c.ownerNick !== state.me.nick" clickable v-close-popup @click="handleLeave(c.id)">
+                  <q-item clickable v-close-popup @click="handleLeave(c.id)">
                     <q-item-section avatar><q-icon name="logout" /></q-item-section>
-                    <q-item-section>Opustiť kanál</q-item-section>
+                    <q-item-section>Opustiť skupinu</q-item-section>
                   </q-item>
                   <q-item v-if="c.ownerNick === state.me.nick" clickable v-close-popup @click="handleClose(c.id)">
                     <q-item-section avatar><q-icon name="delete_outline" color="negative" /></q-item-section>
@@ -325,6 +381,10 @@
               <q-item clickable v-close-popup @click="runInactiveCheck">
                 <q-item-section avatar><q-icon name="auto_delete" color="amber-9" size="18px" /></q-item-section>
                 <q-item-section>/check-inactive (overiť inaktivitu 30 dní)</q-item-section>
+              </q-item>
+              <q-item clickable v-close-popup @click="handleSimulateInvitation">
+                <q-item-section avatar><q-icon name="mark_email_unread" color="amber-9" size="18px" /></q-item-section>
+                <q-item-section>Simulovať pozvánku do skupiny</q-item-section>
               </q-item>
             </q-list>
           </q-menu>
@@ -713,11 +773,15 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch, watchEffect } from 'vue'
+import { computed, nextTick, reactive, ref, watch, watchEffect } from 'vue'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { authState } from '../services/auth'
 import {
+  acceptInvitation,
+  declineInvitation,
+  leaveGroup,
+  simulateInvitation,
   closeChannel,
   checkInactiveChannels,
   addFriend,
@@ -774,16 +838,30 @@ const channelMembers = computed(() => {
 
   return [...members, ...invitations]
 })
-const visibleChannels = computed(() => [...state.channels]
-  .filter(channel => !channel.group || channel.memberNicks?.includes(state.me.nick) || channel.invitedNicks?.includes(state.me.nick))
-  .sort((a, b) => Number(b.invitedNicks?.includes(state.me.nick)) - Number(a.invitedNicks?.includes(state.me.nick))))
+// Kanály, do ktorých má používateľ čakajúcu pozvánku (ešte nie je členom) - pripnuté navrchu
+const invitedChannels = computed(() => state.channels.filter(channel =>
+  channel.group &&
+  channel.invitedNicks?.includes(state.me.nick) &&
+  !channel.memberNicks?.includes(state.me.nick)
+))
+// Osobné chaty a skupiny, v ktorých je používateľ členom
+const visibleChannels = computed(() => state.channels
+  .filter(channel => !channel.group || channel.memberNicks?.includes(state.me.nick)))
 
 watchEffect(() => {
-  if (authState.user.value) {
-    state.me.name = authState.user.value.name
-    state.me.nick = authState.user.value.nick
-    state.me.email = authState.user.value.email
+  const user = authState.user.value
+  if (!user) return
+  if (user.nick && user.nick !== state.me.nick) {
+    // Ukážkové dáta vznikli pre iného používateľa - prepíšeme nick aj v členstvách kanálov,
+    // inak by po prihlásení cez formulár zmizli skupiny a pozvánky.
+    try {
+      updateCurrentUserProfile(state.me.nick, state.me.name, user)
+    } catch {
+      state.me.nick = user.nick
+    }
   }
+  state.me.name = user.name
+  state.me.email = user.email
 })
 
 function handleLogout() {
@@ -889,15 +967,25 @@ function simulateIncoming() {
 }
 
 function selectChat(channelId) {
-  const channel = state.channels.find(item => item.id === channelId)
-  if (channel?.group && channel.invitedNicks?.includes(state.me.nick) && !channel.memberNicks.includes(state.me.nick)) {
-    runAction(() => joinChannel(channel.name), `Pripojili ste sa do kanála #${channel.name}.`)
-  } else {
-    selectChannel(channelId)
-  }
+  selectChannel(channelId)
   if ($q.screen.lt.md) {
     drawer.value = false
   }
+}
+
+function handleAcceptInvite(channelId) {
+  runAction(() => acceptInvitation(channelId), channel => {
+    if ($q.screen.lt.md) drawer.value = false
+    return `Pripojili ste sa do kanála #${channel.name}.`
+  })
+}
+
+function handleDeclineInvite(channelId) {
+  runAction(() => declineInvitation(channelId), channel => `Pozvánka do #${channel.name} bola odmietnutá.`)
+}
+
+function handleSimulateInvitation() {
+  runAction(() => simulateInvitation(), channel => `@${channel.ownerNick} vás pozval do #${channel.name}.`)
 }
 
 function submitGroup() {
@@ -1245,10 +1333,16 @@ function handleCommand(value) {
   }
 }
 
+// Opustenie skupiny zo zoznamu - ostatným členom skupina ostáva
 function handleLeave(channelId) {
+  const wasOwner = state.channels.find(c => c.id === channelId)?.ownerNick === state.me.nick
   runAction(
-    () => leaveChannel(channelId),
-    result => result.destroyed ? `Kanál #${result.name} bol zrušený.` : `Opustili ste kanál #${result.name}.`
+    () => leaveGroup(channelId),
+    result => {
+      if (result.destroyed) return `Opustili ste #${result.name}. Skupina zanikla, pretože v nej nikto iný nebol.`
+      if (wasOwner) return `Opustili ste #${result.name}. Novým správcom je @${result.newOwnerNick}.`
+      return `Opustili ste #${result.name}.`
+    }
   )
 }
 
@@ -1347,6 +1441,15 @@ function handleClose(channelId) {
   font-size: 0.92rem;
   font-weight: 700;
   color: #6f574a;
+}
+
+.sidebar-invite-list {
+  padding: 0 4px 4px;
+  flex: 0 0 auto;
+
+  .invite-actions {
+    padding-left: 4px;
+  }
 }
 
 .sidebar-channel-list {
